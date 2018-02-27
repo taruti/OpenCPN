@@ -539,8 +539,8 @@ OCPNRegion ViewPort::GetVPRegionIntersect( const OCPNRegion &Region, size_t nPoi
         poly_x_min = INVALID_COORD, poly_y_min = INVALID_COORD;
     
     bool valid = false;
-    int npPoints = 0;
-    for( int ip=0; ip < nPoints; ip++ ) {
+    size_t npPoints = 0;
+    for(size_t ip=0; ip < nPoints; ip++ ) {
         wxPoint p = GetPixFromLL( pfp[0], pfp[1] );
         if(p.x == INVALID_COORD)
             continue;
@@ -595,8 +595,8 @@ OCPNRegion ViewPort::GetVPRegionIntersect( const OCPNRegion &Region, size_t nPoi
         GetLLFromPix( wxPoint(rect.x, rect.y + rect.height), &lat, &lon );
         p3.y = lat; p3.x = lon;
         
-        
-        for(size_t i=0 ; i < npPoints-1 ; i++){            
+        // Use i+1 to avoid underflowing here if npPoints.
+        for(size_t i=0 ; i+1 < npPoints ; i++){
             //  Quick check on y dimension
             int y0 = pp[i].y; int y1 = pp[i+1].y;
 
@@ -653,7 +653,8 @@ OCPNRegion ViewPort::GetVPRegionIntersect( const OCPNRegion &Region, size_t nPoi
         while( screen_region_it2.HaveRects() ) {
             wxRect rect = screen_region_it2.GetRect();
  
-            for(size_t i=0 ; i < npPoints-1 ; i++){
+            // Use i+1 to avoid underflow if npPoints is 0
+            for(size_t i=0 ; i+1 < npPoints ; i++){
                 int x0 = pp[i].x;  int y0 = pp[i].y;
 
                 if((x0 < rect.x) || (x0 > rect.x+rect.width) ||
