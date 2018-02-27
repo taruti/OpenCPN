@@ -108,6 +108,7 @@ extern struct sigaction sa_all_old;
 extern sigjmp_buf           env;                    // the context saved by sigsetjmp();
 #endif
 
+#include <memory>
 #include <vector>
 
 
@@ -525,12 +526,14 @@ OCPNRegion ViewPort::GetVPRegionIntersect( const OCPNRegion &Region, size_t nPoi
 
     //    More "normal" case
 
-    wxPoint *pp;
-
     //    Use the passed point buffer if available
-    if( ppoints == NULL ) pp = new wxPoint[nPoints];
-    else
-        pp = ppoints;
+    wxPoint *pp = ppoints;
+    std::unique_ptr<wxPoint[]> temp_pp_buf;
+    if(pp == nullptr)
+    {
+        temp_pp_buf = std::unique_ptr<wxPoint[]>(new wxPoint[nPoints]);
+        pp = temp_pp_buf.get();
+    }
 
     float *pfp = llpoints;
     
@@ -563,10 +566,7 @@ OCPNRegion ViewPort::GetVPRegionIntersect( const OCPNRegion &Region, size_t nPoi
     }
 
     if(!valid)
-    {
-        delete[] pp;
         return OCPNRegion(); //empty;
-    }
  
     //  We want to avoid processing regions with very large rectangle counts,
     //  so make some tests for special cases
@@ -687,21 +687,15 @@ OCPNRegion ViewPort::GetVPRegionIntersect( const OCPNRegion &Region, size_t nPoi
                 float rlat = (p0.y + p2.y)/2.;
                 float rlon = (p0.x + p1.x)/2.;
                 
-                if(G_PtInPolygon_FL((float_2Dpt *)llpoints, nPoints, rlon, rlat)){
-                    if( NULL == ppoints ) delete[] pp;
+                if(G_PtInPolygon_FL((float_2Dpt *)llpoints, nPoints, rlon, rlat))
                     return Region;
-                }
                 rlon += 360.;
-                if(G_PtInPolygon_FL((float_2Dpt *)llpoints, nPoints, rlon, rlat)){
-                    if( NULL == ppoints ) delete[] pp;
+                if(G_PtInPolygon_FL((float_2Dpt *)llpoints, nPoints, rlon, rlat))
                     return Region;
-                }
                 
                 //  otherwise, there is no intersection
                 else{
-                    if( NULL == ppoints ) delete[] pp;
-                    wxRegion r;
-                    return r;
+                    return wxRegion{};
                 }
             }
         
@@ -711,16 +705,13 @@ OCPNRegion ViewPort::GetVPRegionIntersect( const OCPNRegion &Region, size_t nPoi
         else{
         //  Subject polygon is entirely outside of target Region
         //  so the intersection must be empty.
-            if( NULL == ppoints ) delete[] pp;
-            wxRegion r;
-            return r;
+            return wxRegion{};
         }
     }
     else if(b_contained && !b_intersect){
         //  subject polygon is entirely withing the target Region,
         //  so the intersection is the subject polygon
         OCPNRegion r = OCPNRegion( npPoints, pp );
-        if( NULL == ppoints ) delete[] pp;
         return r;
     }
         
@@ -753,8 +744,6 @@ OCPNRegion ViewPort::GetVPRegionIntersect( const OCPNRegion &Region, size_t nPoi
     {
 
         OCPNRegion r = OCPNRegion(npPoints, pp);
-        if(NULL == ppoints)
-            delete[] pp;
 
         sigaction(SIGSEGV, &sa_all_old, NULL);        // reset signal handler
         r.Intersect(Region);
@@ -763,8 +752,6 @@ OCPNRegion ViewPort::GetVPRegionIntersect( const OCPNRegion &Region, size_t nPoi
 
 #else
     OCPNRegion r = OCPNRegion( npPoints, pp );
-
-    if( NULL == ppoints ) delete[] pp;
 
     r.Intersect( Region );
     return r;
